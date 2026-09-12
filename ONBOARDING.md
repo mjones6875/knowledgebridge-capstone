@@ -32,12 +32,9 @@ cd knowledgebridge-capstone
 Suggested workflow given 4 people will have write access: work on a feature
 branch and open a pull request rather than pushing straight to `main`, so
 everyone sees changes before they land. (Not enforced yet at the repo-settings
-level — worth deciding together rather than one person imposing it.)
+level — worth deciding together.)
 
 ## Current Open Questions
-
-Carried over from the original setup doc — **don't build around an assumption
-on any of these**, confirm with the team/sponsor first:
 
 1. ~~Team Leader~~ — **Resolved:** Praveen Kumar, elected September 11, 2026
 2. Single MVP document upload format not chosen (md, txt, or simple docx)
