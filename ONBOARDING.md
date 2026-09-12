@@ -1,10 +1,5 @@
 # KnowledgeBridge — Team Onboarding & Current Status
 
-Read this first. It exists so nobody has to ask "wait, what's already set up?" —
-this is the answer, kept current as the project moves.
-
----
-
 ## What's Already Set Up
 
 - Public GitHub repo created: `mjones6875/knowledgebridge-capstone`
@@ -12,8 +7,6 @@ this is the answer, kept current as the project moves.
 - Directory structure scaffolded (see below)
 - 10 Milestone 1 issues filed under the repo's **Issues** tab
 - Local Postgres + pgvector development database, containerized via Docker Compose (see `DOCKER_SETUP.md`)
-- Collaborator access: Mukhesh invited (write access, pending acceptance). Praveen and Monika still need to share their actual **GitHub usernames** (not email) — invites go out as soon as we have them.
-
 ## Where Things Go
 
 | Folder | What belongs here | Who |
@@ -56,10 +49,9 @@ on any of these**, confirm with the team/sponsor first:
 8. Entity-awareness and cost-dashboard MVP scope not finalized
 9. Exact course due dates — use the live D2L calendar, not template dates
 
-## Milestone 1 — Tracked as GitHub Issues
+## Milestone 1 - Tracked as GitHub Issues
 
-See the repo's **Issues** tab for the full list and to claim/assign one to
-yourself:
+See the repo's **Issues** tab for the full list and to claim/assign one
 
 1. Set up local development environment
 2. Generate synthetic business dataset (50 cohesive documents)
@@ -81,8 +73,8 @@ Postgres + pgvector runs locally via Docker Compose:
 2. `docker compose up -d`
 3. `docker compose ps` to confirm it's running
 
-Backend/frontend containers are stubbed in `docker-compose.yml` (commented
-out) until Milestone 1 issue #1 actually scaffolds those two projects.
+Backend/frontend containers are stubbed in `docker-compose.yml`
+until Milestone 1 issue #1 actually scaffolds those two projects.
 
 ## Explicitly Out of Scope (per sponsor)
 
