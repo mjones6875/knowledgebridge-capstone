@@ -74,10 +74,15 @@ yourself:
 
 ## Local Dev Environment (Docker)
 
-See `DOCKER_SETUP.md` for the full walkthrough. Short version: the Postgres +
-pgvector database is fully working today via `docker compose up -d` — the
-backend/frontend containers are stubbed in as commented-out sections until
-Milestone 1 issue #1 actually scaffolds those two projects.
+Postgres + pgvector runs locally via Docker Compose:
+
+1. Copy `.env.example` to `.env` and fill in local values (any placeholder
+   works — this database only exists on your own machine)
+2. `docker compose up -d`
+3. `docker compose ps` to confirm it's running
+
+Backend/frontend containers are stubbed in `docker-compose.yml` (commented
+out) until Milestone 1 issue #1 actually scaffolds those two projects.
 
 ## Explicitly Out of Scope (per sponsor)
 
