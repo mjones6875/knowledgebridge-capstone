@@ -1,0 +1,41 @@
+# Environment and secrets
+.env
+*.env
+.env.local
+.env.*.local
+secrets/
+credentials/
+
+# Node / React
+node_modules/
+build/
+dist/
+.npm
+
+# Java / Spring Boot
+target/
+*.jar
+*.war
+*.class
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE files
+.vscode/settings.json
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Docker
+docker-compose.override.yml
+
+# Python
+__pycache__/
+*.pyc
+venv/
