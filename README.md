@@ -27,7 +27,7 @@ This is a proof-of-concept application, not a production enterprise system.
 
 | Name | Role |
 |---|---|
-| Praveen Kumar | Lead Developer - Java / API — Team Leader |
+| Praveen Kumar | Lead Developer - Java / API, Team Leader |
 | Mukhesh Raghava Katragadda | Lead Developer - UI / Frontend, Documentation, Testing |
 | Monika Juttiga | Lead Developer - UI, Documentation, Testing |
 | Marlon Jones | Lead Developer - CI/CD, DevOps, Release Management |
