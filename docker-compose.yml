@@ -14,25 +14,10 @@ services:
 
   # backend:
   #   TODO (Milestone 1, issue #1): uncomment once the Spring Boot project
-  #   is scaffolded in backend/.
-  #   build: ./backend
-  #   container_name: knowledgebridge-backend
-  #   depends_on:
-  #     - postgres
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-  #     SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
-  #     SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-  #   ports:
-  #     - "8080:8080"
+
 
   # frontend:
-  #   TODO (Milestone 1, issue #1): uncomment once the React project is
-  #   scaffolded in frontend/.
-  #   build: ./frontend
-  #   container_name: knowledgebridge-frontend
-  #   ports:
-  #     - "3000:3000"
+ 
 
 volumes:
   postgres_data:
