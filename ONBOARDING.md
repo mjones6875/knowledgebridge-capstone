@@ -14,11 +14,11 @@
 |---|---|---|
 | `frontend/` | The React application | Mukhesh, Monika |
 | `backend/` | The Java Spring Boot API | Praveen, Marlon |
-| `docs/architecture/` | System architecture diagrams, workflow diagrams | Whoever's building the diagram |
-| `docs/deliverables/` | SRS, cost projection spreadsheet, Project Plan / Gantt chart | Whoever owns that deliverable |
-| `docs/meeting-notes/` | Notes from team meetings | Whoever's taking notes that week |
-| `data/synthetic-corpus/` | The 50-document synthetic business dataset | Whoever's generating it |
-| `scripts/` | Setup/utility scripts (not application code) | Anyone |
+| `docs/architecture/` | System architecture diagrams, workflow diagrams | Team |
+| `docs/deliverables/` | SRS, cost projection spreadsheet, Project Plan / Gantt chart | Monica, Team |
+| `docs/meeting-notes/` | Notes from team meetings | Team |
+| `data/synthetic-corpus/` | Synthetic business dataset | Team |
+| `scripts/` | Setup/utility scripts (not application code) | Team |
 
 Every folder currently has a placeholder `.gitkeep` file so Git tracks the empty
 directory. Delete the `.gitkeep` once real content lands in that folder.
@@ -30,29 +30,12 @@ git clone https://github.com/mjones6875/knowledgebridge-capstone.git
 cd knowledgebridge-capstone
 ```
 
-Suggested workflow given 4 people will have write access: work on a feature
-branch and open a pull request rather than pushing straight to `main`, so
-everyone sees changes before they land. (Not enforced yet at the repo-settings
-level, worth deciding together.)
-
-## Current Open Questions
-
-1. ~~Team Leader~~ (Resolved: Praveen Kumar, elected September 11, 2026)
-2. Single MVP document upload format not chosen (md, txt, or simple docx)
-3. Final LLM provider/model not finalized
-4. OpenRouter credit not yet provisioned
-5. Embedding provider/model not decided
-6. gbrain local setup requirements not fully documented
-7. GPU/compute environment not confirmed for all team members
-8. Entity-awareness and cost-dashboard MVP scope not finalized
-9. Exact course due dates: use the live D2L calendar, not template dates
-
 ## Milestone 1 - Tracked as GitHub Issues
 
 See the repo's **Issues** tab for the full list and to claim/assign one
 
 1. Set up local development environment
-2. Generate synthetic business dataset (50 cohesive documents)
+2. Generate synthetic business dataset
 3. Draft Requirements Document / SRS
 4. Create system architecture diagram
 5. Create business knowledge workflow diagram
@@ -70,16 +53,3 @@ Postgres + pgvector runs locally via Docker Compose:
    works since this database only exists on your own machine)
 2. `docker compose up -d`
 3. `docker compose ps` to confirm it's running
-
-Backend/frontend containers are stubbed in `docker-compose.yml`
-until Milestone 1 issue #1 actually scaffolds those two projects.
-
-## Explicitly Out of Scope (per sponsor)
-
-Don't build or scaffold any of these. Sponsor was explicit about avoiding
-scope creep here: mobile/responsive design, production cloud deployment,
-authentication/SSO/OAuth, production-grade RBAC, heavyweight CI/CD pipelines,
-PDF parsing (stretch goal only), real-time multi-user collaboration,
-regulatory compliance work (HIPAA/SOC 2/GDPR), multilingual support,
-third-party SaaS integrations (Slack/Teams/Salesforce), MCP agent integration
-as a core feature.
