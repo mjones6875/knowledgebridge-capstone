@@ -12,12 +12,25 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  # backend:
-  #   TODO (Milestone 1, issue #1): uncomment once the Spring Boot project
+  backend:
+    build: ./backend
+    container_name: knowledgebridge-backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      # gbrain isn't containerized here, it's an external service. If it's
+      # running on the host machine, use host.docker.internal instead of
+      # localhost, "localhost" inside a container means the container itself.
+      GBRAIN_BASE_URL: ${GBRAIN_BASE_URL:-http://host.docker.internal:8787}
+      GBRAIN_TOKEN: ${GBRAIN_TOKEN}
+    ports:
+      - "8080:8080"
 
-
-  # frontend:
- 
+  # frontend intentionally not containerized for local dev, see DOCKER_SETUP.md
+  # (local-only file) for why: the browser talks to the backend directly, so
+  # running the React dev server natively via `npm start` is simpler and
+  # avoids container-networking issues for no real benefit.
 
 volumes:
   postgres_data:
