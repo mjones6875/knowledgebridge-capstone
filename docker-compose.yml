@@ -26,6 +26,11 @@ services:
       GBRAIN_TOKEN: ${GBRAIN_TOKEN}
     ports:
       - "8080:8080"
+    extra_hosts:
+      # host.docker.internal only works out of the box on Docker Desktop
+      # (Mac/Windows). On native Linux (like an EC2 instance), this line is
+      # what makes that same hostname actually resolve to the host machine.
+      - "host.docker.internal:host-gateway"
 
   # frontend intentionally not containerized for local dev, see DOCKER_SETUP.md
   # (local-only file) for why: the browser talks to the backend directly, so
