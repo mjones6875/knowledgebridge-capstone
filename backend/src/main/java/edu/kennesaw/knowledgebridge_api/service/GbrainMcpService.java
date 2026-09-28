@@ -1,6 +1,7 @@
 package edu.kennesaw.knowledgebridge_api.service;
 
 import edu.kennesaw.knowledgebridge_api.dto.*;
+import edu.kennesaw.knowledgebridge_api.exception.GbrainUnavailableException;
 import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -14,24 +15,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import org.springframework.beans.factory.ObjectProvider;
 
 @Service
 public class GbrainMcpService {
 
-    private final McpSyncClient gbrainClient;
+    private final ObjectProvider<McpSyncClient> clientProvider;
     private final ObjectMapper objectMapper;
 
+    private volatile McpSyncClient initializedClient;
+
     public GbrainMcpService(
-            McpSyncClient gbrainClient,
+            ObjectProvider<McpSyncClient> clientProvider,
             ObjectMapper objectMapper
     ) {
-        this.gbrainClient = gbrainClient;
+        this.clientProvider = clientProvider;
         this.objectMapper = objectMapper;
     }
 
     public SearchResponse search(String query) {
 
-        McpSchema.CallToolResult mcpResult = gbrainClient.callTool(
+        McpSchema.CallToolResult mcpResult = getClient().callTool(
                 new McpSchema.CallToolRequest(
                         "query",
                         Map.of(
@@ -83,7 +87,7 @@ public class GbrainMcpService {
     }
 
     public Object getToolDefinition(String toolName) {
-        return gbrainClient.listTools()
+        return getClient().listTools()
                 .tools()
                 .stream()
                 .filter(tool -> toolName.equals(tool.name()))
@@ -102,7 +106,7 @@ public class GbrainMcpService {
 
         String markdown = buildMarkdown(request);
 
-        McpSchema.CallToolResult result = gbrainClient.callTool(
+        McpSchema.CallToolResult result = getClient().callTool(
                 new McpSchema.CallToolRequest(
                         "put_page",
                         Map.of(
@@ -195,11 +199,11 @@ public class GbrainMcpService {
     }
 
     public List<McpSchema.Tool> listTools() {
-        return gbrainClient.listTools().tools();
+        return getClient().listTools().tools();
     }
 
     public McpSchema.CallToolResult listPages() {
-        return gbrainClient.callTool(
+        return getClient().callTool(
                 new McpSchema.CallToolRequest(
                         "list_pages",
                         Map.of("limit", 10)
@@ -208,7 +212,7 @@ public class GbrainMcpService {
     }
 
     public McpSchema.CallToolResult queryRaw(String query) {
-        return gbrainClient.callTool(
+        return getClient().callTool(
                 new McpSchema.CallToolRequest(
                         "query",
                         Map.of(
@@ -286,7 +290,7 @@ public class GbrainMcpService {
     }
 
     private McpSchema.CallToolResult callThink(String question) {
-        return gbrainClient.callTool(
+        return getClient().callTool(
                 new McpSchema.CallToolRequest(
                         "think",
                         Map.of("question", question)
@@ -337,7 +341,7 @@ public class GbrainMcpService {
                     extractedText.trim()
             );
 
-            McpSchema.CallToolResult mcpResult = gbrainClient.callTool(
+            McpSchema.CallToolResult mcpResult = getClient().callTool(
                     new McpSchema.CallToolRequest(
                             "put_page",
                             Map.of(
@@ -455,7 +459,7 @@ public class GbrainMcpService {
     }
 
     public McpSchema.CallToolResult getPage(String slug) {
-        return gbrainClient.callTool(
+        return getClient().callTool(
                 new McpSchema.CallToolRequest(
                         "get_page",
                         Map.of(
@@ -467,11 +471,36 @@ public class GbrainMcpService {
     }
 
     public McpSchema.CallToolResult deletePage(String slug) {
-        return gbrainClient.callTool(
+        return getClient().callTool(
                 new McpSchema.CallToolRequest(
                         "delete_page",
                         Map.of("slug", slug)
                 )
         );
+    }
+
+    private McpSyncClient getClient() {
+        McpSyncClient client = initializedClient;
+
+        if (client == null) {
+            synchronized (this) {
+                client = initializedClient;
+
+                if (client == null) {
+                    try {
+                        client = clientProvider.getObject();
+                        client.initialize();
+                        initializedClient = client;
+                    } catch (Exception exception) {
+                        throw new GbrainUnavailableException(
+                                "gBrain is unavailable or not configured",
+                                exception
+                        );
+                    }
+                }
+            }
+        }
+
+        return client;
     }
 }

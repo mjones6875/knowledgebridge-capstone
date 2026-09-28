@@ -6,6 +6,7 @@ import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTranspor
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 
 import java.net.http.HttpRequest;
 import java.time.Duration;
@@ -14,28 +15,35 @@ import java.time.Duration;
 public class GbrainMcpConfig {
 
     @Bean(destroyMethod = "close")
+    @Lazy
     public McpSyncClient gbrainMcpClient(
             @Value("${gbrain.base-url:http://localhost:8787}")
             String baseUrl,
 
-            @Value("${GBRAIN_TOKEN}")
+            @Value("${GBRAIN_TOKEN:}")
             String token
     ) {
-        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-                .header("Authorization", "Bearer " + token);
+        HttpRequest.Builder requestBuilder =
+                HttpRequest.newBuilder();
+
+        if (token != null && !token.isBlank()) {
+            requestBuilder.header(
+                    "Authorization",
+                    "Bearer " + token
+            );
+        }
 
         HttpClientStreamableHttpTransport transport =
-                HttpClientStreamableHttpTransport.builder(baseUrl)
+                HttpClientStreamableHttpTransport
+                        .builder(baseUrl)
                         .endpoint("/mcp")
                         .requestBuilder(requestBuilder)
                         .build();
 
-        McpSyncClient client = McpClient.sync(transport)
+        return McpClient.sync(transport)
                 .requestTimeout(Duration.ofSeconds(120))
                 .build();
 
-        client.initialize();
-
-        return client;
+        // Do not call client.initialize() here.
     }
 }
