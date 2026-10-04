@@ -10,6 +10,7 @@ public record AnswerResponse(
         String modelUsed,
         TokenUsage usage
 ) {
+
     public record Citation(
             String pageSlug,
             Integer rowNumber,
@@ -21,5 +22,8 @@ public record AnswerResponse(
             int inputTokens,
             int outputTokens
     ) {
+        public int totalTokens() {
+            return inputTokens + outputTokens;
+        }
     }
 }
