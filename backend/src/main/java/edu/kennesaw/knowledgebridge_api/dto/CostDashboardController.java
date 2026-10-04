@@ -1,6 +1,5 @@
-package edu.kennesaw.knowledgebridge_api.controller;
+package edu.kennesaw.knowledgebridge_api.dto;
 
-import edu.kennesaw.knowledgebridge_api.dto.CostDashboardResponse;
 import edu.kennesaw.knowledgebridge_api.service.CostTrackingService;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
