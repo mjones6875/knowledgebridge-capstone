@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-
+import Sidebar from "./components/Sidebar";
+import CostDashboard from "./components/CostDashboard";
 import {
   askQuestion,
   deletePage,
@@ -1055,53 +1056,59 @@ function AdminTab() {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("chat");
+  const [activePage, setActivePage] = useState("qa");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <div className="brand">
-          <KnowledgeIcon />
+    <div className="kb-app-shell">
+      <Sidebar
+        activePage={activeTab}
+        onPageChange={setActiveTab}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((currentValue) => !currentValue)}
+      />
 
-          <div>
-            <strong>KnowledgeBridge</strong>
-            <span>AI-powered business knowledge</span>
+      <div className="kb-content-shell">
+        <header className="app-header">
+          <div className="brand">
+            <KnowledgeIcon />
+
+            <div>
+              <strong>KnowledgeBridge</strong>
+              <span>AI-powered business knowledge</span>
+            </div>
           </div>
-        </div>
 
-        <nav className="main-tabs" aria-label="Primary navigation">
-          <button
-            className={activeTab === "chat" ? "active" : ""}
-            type="button"
-            onClick={() => setActiveTab("chat")}
-          >
-            Q&amp;A Workspace
-          </button>
+          <div className="current-page-title">
+            {activeTab === "chat" && "Q&A Workspace"}
+            {activeTab === "admin" && "Admin Ingestion"}
+            {activeTab === "cost" && "Cost Dashboard"}
+          </div>
 
-          <button
-            className={activeTab === "admin" ? "active" : ""}
-            type="button"
-            onClick={() => setActiveTab("admin")}
-          >
-            Admin Ingestion
-          </button>
-        </nav>
+          <div className="status-pill">
+            <span /> POC
+          </div>
+        </header>
 
-        <div className="status-pill">
-          <span /> POC
-        </div>
-      </header>
-
-      {/*
-        Both components remain mounted. The hidden
-        attribute only changes which one is visible,
-        so chat history persists while changing tabs.
+        {/*
+        All pages remain mounted. The hidden attribute controls
+        visibility, so chat history and form data are preserved
+        while switching between menu items.
       */}
-      <div hidden={activeTab !== "chat"}>
-        <ChatTab />
-      </div>
 
-      <div hidden={activeTab !== "admin"}>
-        <AdminTab />
+        <main className="kb-main-content">
+          <div hidden={activeTab !== "chat"}>
+            <ChatTab />
+          </div>
+
+          <div hidden={activeTab !== "admin"}>
+            <AdminTab />
+          </div>
+
+          <div hidden={activeTab !== "cost"}>
+            <CostDashboard active={activeTab === "cost"} />
+          </div>
+        </main>
       </div>
     </div>
   );
