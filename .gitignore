@@ -39,6 +39,7 @@ docker-compose.override.yml
 __pycache__/
 *.pyc
 venv/
+.venv/
 
 # Personal reference, not for the shared team repo
 DOCKER_SETUP.md
