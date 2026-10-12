@@ -72,6 +72,34 @@ export async function ingestFile({ title, file }) {
   return parseResponse(response);
 }
 
+export async function ingestMedia({ title, slug, tags, file }) {
+  const formData = new FormData();
+
+  if (title?.trim()) {
+    formData.append("title", title.trim());
+  }
+
+  if (slug?.trim()) {
+    formData.append("slug", slug.trim());
+  }
+
+  if (tags?.trim()) {
+    formData.append("tags", tags.trim());
+  }
+
+  formData.append("file", file);
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/gbrain/ingest/media`,
+    {
+      method: "POST",
+      body: formData,
+    },
+  );
+
+  return parseResponse(response);
+}
+
 export async function listPages() {
   const response = await fetch(`${API_BASE_URL}/api/gbrain/pages`);
   const body = await parseResponse(response);

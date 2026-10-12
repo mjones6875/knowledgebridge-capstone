@@ -6,9 +6,27 @@ import {
   deletePage,
   getPage,
   ingestFile,
+  ingestMedia,
   ingestText,
   listPages,
 } from "./api/knowledgeBridgeApi";
+
+const DOCUMENT_EXTENSIONS = [".txt", ".md"];
+
+const MEDIA_EXTENSIONS = [".mp3", ".wav", ".m4a", ".mp4", ".mov", ".webm"];
+
+const DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
+const MEDIA_MAX_BYTES = 50 * 1024 * 1024;
+
+function hasSupportedExtension(fileName, extensions) {
+  const normalizedName = fileName.toLowerCase();
+
+  return extensions.some((extension) => normalizedName.endsWith(extension));
+}
+
+function isMedia(file) {
+  return hasSupportedExtension(file.name, MEDIA_EXTENSIONS);
+}
 
 function slugify(value) {
   return value
@@ -521,25 +539,44 @@ function AdminTab() {
   }
 
   function handleFileSelection(selectedFile) {
-    if (!selectedFile) return;
-
-    const lowerCaseName = selectedFile.name.toLowerCase();
-
-    if (!lowerCaseName.endsWith(".txt") && !lowerCaseName.endsWith(".md")) {
-      setFile(null);
-      setNotice({
-        type: "error",
-        text: "Only TXT and Markdown files are currently supported.",
-      });
+    if (!selectedFile) {
       return;
     }
 
-    if (selectedFile.size > 5 * 1024 * 1024) {
+    const documentSelected = hasSupportedExtension(
+      selectedFile.name,
+      DOCUMENT_EXTENSIONS,
+    );
+
+    const mediaSelected = isMedia(selectedFile);
+
+    if (!documentSelected && !mediaSelected) {
       setFile(null);
+
       setNotice({
         type: "error",
-        text: "The selected file must be 5 MB or smaller.",
+        text:
+          "Supported formats: TXT, Markdown, MP3, WAV, M4A, " +
+          "MP4, MOV, and WebM.",
       });
+
+      return;
+    }
+
+    const maximumBytes = mediaSelected ? MEDIA_MAX_BYTES : DOCUMENT_MAX_BYTES;
+
+    const maximumLabel = mediaSelected ? "50 MB" : "5 MB";
+
+    if (selectedFile.size > maximumBytes) {
+      setFile(null);
+
+      setNotice({
+        type: "error",
+        text:
+          `The selected ${mediaSelected ? "media" : "document"} ` +
+          `file must be ${maximumLabel} or smaller.`,
+      });
+
       return;
     }
 
@@ -616,29 +653,7 @@ function AdminTab() {
     if (mode === "file" && !file) {
       setNotice({
         type: "error",
-        text: "Choose a document to upload.",
-      });
-
-      return;
-    }
-
-    if (mode === "file" && file.size > 5 * 1024 * 1024) {
-      setNotice({
-        type: "error",
-        text: "The selected file must be 5 MB or smaller.",
-      });
-
-      return;
-    }
-
-    if (
-      mode === "file" &&
-      !file.name.toLowerCase().endsWith(".txt") &&
-      !file.name.toLowerCase().endsWith(".md")
-    ) {
-      setNotice({
-        type: "error",
-        text: "Only TXT and Markdown files are currently supported.",
+        text: "Choose a document, audio file, or video to upload.",
       });
 
       return;
@@ -647,17 +662,25 @@ function AdminTab() {
     setLoading(true);
 
     try {
-      const result =
-        mode === "text"
-          ? await ingestText({
-              title: title.trim(),
-              slug: slug.trim(),
-              content: content.trim(),
-            })
-          : await ingestFile({
-              title: title.trim(),
-              file,
-            });
+      let result;
+
+      if (mode === "text") {
+        result = await ingestText({
+          title: title.trim(),
+          slug: slug.trim(),
+          content: content.trim(),
+        });
+      } else if (isMedia(file)) {
+        result = await ingestMedia({
+          title: title.trim(),
+          file,
+        });
+      } else {
+        result = await ingestFile({
+          title: title.trim(),
+          file,
+        });
+      }
 
       setNotice({
         type: "success",
@@ -780,7 +803,7 @@ function AdminTab() {
                 key={fileInputKey}
                 className="file-input"
                 type="file"
-                accept=".txt,.md,text/plain,text/markdown"
+                accept=".txt,.md,.mp3,.wav,.m4a,.mp4,.mov,.webm,text/plain,text/markdown,audio/*,video/*"
                 onChange={(event) =>
                   handleFileSelection(event.target.files?.[0])
                 }
@@ -792,16 +815,16 @@ function AdminTab() {
 
               <strong>
                 {isDragging
-                  ? "Drop the document here"
+                  ? "Drop the file here"
                   : file
                     ? file.name
-                    : "Choose a document or drag and drop"}
+                    : "Choose a document, audio, or video file"}
               </strong>
 
               <span>
                 {file
-                  ? `${(file.size / 1024).toFixed(1)} KB selected`
-                  : "TXT or Markdown, up to 5 MB"}
+                  ? `${(file.size / 1024 / 1024).toFixed(2)} MB selected`
+                  : "TXT/Markdown up to 5 MB · Audio/video up to 50 MB"}
               </span>
 
               {!file && !isDragging && (
@@ -830,7 +853,10 @@ function AdminTab() {
               {loading ? (
                 <>
                   <Spinner />
-                  Ingesting…
+
+                  {mode === "file" && file && isMedia(file)
+                    ? "Transcribing and ingesting…"
+                    : "Ingesting…"}
                 </>
               ) : mode === "file" ? (
                 "Upload and ingest"
