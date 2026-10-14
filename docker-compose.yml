@@ -12,17 +12,49 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  # gbrain's own database. The name is fixed, the gbrain entrypoint waits for
+  # a host called exactly "gbrain-postgres".
+  gbrain-postgres:
+    image: pgvector/pgvector:pg16
+    container_name: gbrain-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gbrain
+      POSTGRES_PASSWORD: ${GBRAIN_POSTGRES_PASSWORD:-gbrain_local_dev_only}
+      POSTGRES_DB: gbrain
+    volumes:
+      - gbrain_postgres_data:/var/lib/postgresql/data
+
+  # Built from the sponsor's docker-gbrain wrapper (vendored in ./gbrain).
+  gbrain:
+    build:
+      context: ./gbrain
+      args:
+        GBRAIN_TAG: v0.48.5.0
+    container_name: knowledgebridge-gbrain
+    restart: unless-stopped
+    depends_on:
+      - gbrain-postgres
+    environment:
+      DATABASE_URL: postgres://gbrain:${GBRAIN_POSTGRES_PASSWORD:-gbrain_local_dev_only}@gbrain-postgres:5432/gbrain
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      SYNC_INTERVAL: ${SYNC_INTERVAL:-60}
+    ports:
+      - "7333:7333"
+    volumes:
+      - gbrain_data:/data/brain
+
   backend:
     build: ./backend
     container_name: knowledgebridge-backend
     restart: unless-stopped
     depends_on:
       - postgres
+      - gbrain
     environment:
-      # gbrain isn't containerized here, it's an external service. If it's
-      # running on the host machine, use host.docker.internal instead of
-      # localhost, "localhost" inside a container means the container itself.
-      GBRAIN_BASE_URL: ${GBRAIN_BASE_URL:-http://host.docker.internal:8787}
+      # Defaults to the gbrain container. To use a gbrain running on your own
+      # machine instead, set GBRAIN_BASE_URL=http://host.docker.internal:8787
+      GBRAIN_BASE_URL: ${GBRAIN_BASE_URL:-http://gbrain:7333}
       GBRAIN_TOKEN: ${GBRAIN_TOKEN}
     ports:
       - "8080:8080"
@@ -39,3 +71,5 @@ services:
 
 volumes:
   postgres_data:
+  gbrain_postgres_data:
+  gbrain_data:
