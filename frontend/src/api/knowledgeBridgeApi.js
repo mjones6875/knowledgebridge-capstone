@@ -37,6 +37,49 @@ function throwForMcpError(body) {
   throw new Error("The gBrain operation failed.");
 }
 
+// fetch() cannot report upload progress, so file uploads use XHR instead.
+function uploadFormData(url, formData, onUploadProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.open("POST", url);
+
+    xhr.upload.onprogress = (event) => {
+      if (onUploadProgress && event.lengthComputable) {
+        onUploadProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      let body = null;
+
+      try {
+        body = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+      } catch (parseError) {
+        body = null;
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(body);
+      } else {
+        reject(
+          new Error(
+            body?.message ||
+              body?.error ||
+              `Request failed with status ${xhr.status}`,
+          ),
+        );
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error("Network error while uploading the file."));
+    };
+
+    xhr.send(formData);
+  });
+}
+
 export async function askQuestion(question) {
   const params = new URLSearchParams({ question });
   const response = await fetch(
@@ -56,7 +99,7 @@ export async function ingestText({ title, slug, content }) {
   return parseResponse(response);
 }
 
-export async function ingestFile({ title, file }) {
+export async function ingestFile({ title, file }, onUploadProgress) {
   const formData = new FormData();
 
   if (title?.trim()) {
@@ -65,14 +108,14 @@ export async function ingestFile({ title, file }) {
 
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/api/gbrain/ingest/file`, {
-    method: "POST",
-    body: formData
-  });
-  return parseResponse(response);
+  return uploadFormData(
+    `${API_BASE_URL}/api/gbrain/ingest/file`,
+    formData,
+    onUploadProgress,
+  );
 }
 
-export async function ingestMedia({ title, slug, tags, file }) {
+export async function ingestMedia({ title, slug, tags, file }, onUploadProgress) {
   const formData = new FormData();
 
   if (title?.trim()) {
@@ -89,15 +132,11 @@ export async function ingestMedia({ title, slug, tags, file }) {
 
   formData.append("file", file);
 
-  const response = await fetch(
+  return uploadFormData(
     `${API_BASE_URL}/api/gbrain/ingest/media`,
-    {
-      method: "POST",
-      body: formData,
-    },
+    formData,
+    onUploadProgress,
   );
-
-  return parseResponse(response);
 }
 
 export async function listPages() {

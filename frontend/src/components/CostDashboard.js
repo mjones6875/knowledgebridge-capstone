@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { AgGridProvider, AgGridReact } from "ag-grid-react";
+import { AG_GRID_MODULES, kbGridTheme } from "../gridTheme";
 
 const API_BASE_URL =
   process.env.REACT_APP_API_BASE_URL || "http://localhost:8080";
@@ -61,6 +63,106 @@ function CostDashboard({ active }) {
       loadDashboard();
     }
   }, [active, loadDashboard]);
+
+  const modelColumnDefs = useMemo(
+    () => [
+      {
+        headerName: "Model",
+        field: "model",
+        flex: 1.6,
+        minWidth: 180,
+        cellClass: "kb-model-name",
+      },
+      {
+        headerName: "Requests",
+        field: "requests",
+        flex: 1,
+        minWidth: 100,
+        valueFormatter: (params) => formatNumber(params.value),
+      },
+      {
+        headerName: "Input Tokens",
+        field: "inputTokens",
+        flex: 1,
+        minWidth: 120,
+        valueFormatter: (params) => formatNumber(params.value),
+      },
+      {
+        headerName: "Output Tokens",
+        field: "outputTokens",
+        flex: 1,
+        minWidth: 120,
+        valueFormatter: (params) => formatNumber(params.value),
+      },
+      {
+        headerName: "Total Tokens",
+        field: "totalTokens",
+        flex: 1,
+        minWidth: 120,
+        valueFormatter: (params) => formatNumber(params.value),
+      },
+      {
+        headerName: "Estimated Cost",
+        field: "estimatedCostUsd",
+        flex: 1.2,
+        minWidth: 150,
+        valueFormatter: (params) => formatCost(params.value),
+      },
+    ],
+    [],
+  );
+
+  const requestColumnDefs = useMemo(
+    () => [
+      {
+        headerName: "Date",
+        field: "timestamp",
+        flex: 1.4,
+        minWidth: 170,
+        valueFormatter: (params) => formatDate(params.value),
+      },
+      {
+        headerName: "Operation",
+        field: "operation",
+        flex: 1,
+        minWidth: 110,
+      },
+      {
+        headerName: "Model",
+        field: "model",
+        flex: 1.6,
+        minWidth: 180,
+        cellClass: "kb-model-name",
+      },
+      {
+        headerName: "Input",
+        field: "inputTokens",
+        flex: 0.8,
+        minWidth: 90,
+        valueFormatter: (params) => formatNumber(params.value),
+      },
+      {
+        headerName: "Output",
+        field: "outputTokens",
+        flex: 0.8,
+        minWidth: 90,
+        valueFormatter: (params) => formatNumber(params.value),
+      },
+      {
+        headerName: "Cost",
+        field: "estimatedCostUsd",
+        flex: 1,
+        minWidth: 110,
+        valueFormatter: (params) => formatCost(params.value),
+      },
+    ],
+    [],
+  );
+
+  const dashboardDefaultColDef = useMemo(
+    () => ({ sortable: true, filter: true, resizable: true }),
+    [],
+  );
 
   if (!dashboard && loading) {
     return (
@@ -172,32 +274,23 @@ function CostDashboard({ active }) {
         {modelRows.length === 0 ? (
           <EmptyState message="No model usage has been recorded yet. Submit a question from the Q&A Workspace." />
         ) : (
-          <div className="kb-table-wrapper">
-            <table className="kb-dashboard-table">
-              <thead>
-                <tr>
-                  <th>Model</th>
-                  <th>Requests</th>
-                  <th>Input Tokens</th>
-                  <th>Output Tokens</th>
-                  <th>Total Tokens</th>
-                  <th>Estimated Cost</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {modelRows.map(([model, summary]) => (
-                  <tr key={model}>
-                    <td className="kb-model-name">{model}</td>
-                    <td>{formatNumber(summary.requests)}</td>
-                    <td>{formatNumber(summary.inputTokens)}</td>
-                    <td>{formatNumber(summary.outputTokens)}</td>
-                    <td>{formatNumber(summary.totalTokens)}</td>
-                    <td>{formatCost(summary.estimatedCostUsd)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="kb-ag-grid kb-ag-grid--compact">
+            <AgGridProvider modules={AG_GRID_MODULES}>
+              <AgGridReact
+                theme={kbGridTheme}
+                rowData={modelRows.map(([model, summary]) => ({
+                  model,
+                  ...summary,
+                }))}
+                columnDefs={modelColumnDefs}
+                defaultColDef={dashboardDefaultColDef}
+                getRowId={(params) => params.data.model}
+                rowHeight={40}
+                headerHeight={36}
+                animateRows
+                suppressCellFocus
+              />
+            </AgGridProvider>
           </div>
         )}
       </section>
@@ -213,34 +306,20 @@ function CostDashboard({ active }) {
         {!data.recentRequests?.length ? (
           <EmptyState message="No requests have been recorded during this application session." />
         ) : (
-          <div className="kb-table-wrapper">
-            <table className="kb-dashboard-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Operation</th>
-                  <th>Model</th>
-                  <th>Input</th>
-                  <th>Output</th>
-                  <th>Cost</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {data.recentRequests.map((request) => (
-                  <tr key={request.id}>
-                    <td>{formatDate(request.timestamp)}</td>
-                    <td>{request.operation}</td>
-                    <td className="kb-model-name">
-                      {request.model}
-                    </td>
-                    <td>{formatNumber(request.inputTokens)}</td>
-                    <td>{formatNumber(request.outputTokens)}</td>
-                    <td>{formatCost(request.estimatedCostUsd)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="kb-ag-grid">
+            <AgGridProvider modules={AG_GRID_MODULES}>
+              <AgGridReact
+                theme={kbGridTheme}
+                rowData={data.recentRequests}
+                columnDefs={requestColumnDefs}
+                defaultColDef={dashboardDefaultColDef}
+                getRowId={(params) => String(params.data.id)}
+                rowHeight={40}
+                headerHeight={36}
+                animateRows
+                suppressCellFocus
+              />
+            </AgGridProvider>
           </div>
         )}
       </section>

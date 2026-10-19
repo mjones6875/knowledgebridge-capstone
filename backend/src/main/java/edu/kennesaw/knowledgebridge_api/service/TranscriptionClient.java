@@ -27,7 +27,7 @@ public class TranscriptionClient {
                 new SimpleClientHttpRequestFactory();
 
         requestFactory.setConnectTimeout(10_000);
-        requestFactory.setReadTimeout(300_000);
+        requestFactory.setReadTimeout(900_000);
 
         this.restClient = RestClient.builder()
                 .baseUrl(transcriptionBaseUrl)
