@@ -31,7 +31,7 @@ public class GbrainMcpConfig {
                         .build();
 
         McpSyncClient client = McpClient.sync(transport)
-                .requestTimeout(Duration.ofSeconds(10))
+                .requestTimeout(Duration.ofMinutes(10))
                 .build();
 
         client.initialize();
