@@ -1,6 +1,17 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
+import { AgGridProvider, AgGridReact } from "ag-grid-react";
 import Sidebar from "./components/Sidebar";
 import CostDashboard from "./components/CostDashboard";
+import Login from "./components/Login";
+import { AG_GRID_MODULES, kbGridTheme } from "./gridTheme";
 import {
   askQuestion,
   deletePage,
@@ -17,6 +28,36 @@ const MEDIA_EXTENSIONS = [".mp3", ".wav", ".m4a", ".mp4", ".mov", ".webm"];
 
 const DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
 const MEDIA_MAX_BYTES = 50 * 1024 * 1024;
+
+const AUTH_STORAGE_KEY = "kb_authenticated_user";
+const THEME_STORAGE_KEY = "kb_theme";
+
+function getInitialTheme() {
+  const stored = localStorage.getItem(THEME_STORAGE_KEY);
+
+  if (stored === "light" || stored === "dark") {
+    return stored;
+  }
+
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
+const SUGGESTED_PROMPTS = [
+  "What is the PTO rollover limit?",
+  "How do I submit a reimbursement request?",
+  "What is the remote work policy?",
+];
+
+const ADMIN_LEFT_WIDTH_KEY = "kb_admin_left_width";
+const ADMIN_LEFT_WIDTH_MIN = 340;
+const ADMIN_RIGHT_WIDTH_MIN = 360;
+
+function getStoredAdminLeftWidth() {
+  const stored = Number(localStorage.getItem(ADMIN_LEFT_WIDTH_KEY));
+  return Number.isFinite(stored) && stored > 0 ? stored : null;
+}
 
 function hasSupportedExtension(fileName, extensions) {
   const normalizedName = fileName.toLowerCase();
@@ -67,8 +108,149 @@ function removeInlineCitations(answer, citations = []) {
 function KnowledgeIcon() {
   return (
     <div className="brand-mark" aria-hidden="true">
-      K
+      KB
     </div>
+  );
+}
+
+function getInitials(name) {
+  const trimmed = (name || "").trim();
+
+  return trimmed ? trimmed.slice(0, 2).toUpperCase() : "U";
+}
+
+function KnowledgeTypeCell({ value }) {
+  return <span className="type-badge">{value || "page"}</span>;
+}
+
+function KnowledgeActionsCell({ data, context }) {
+  const { pageAction, onDownload, onDelete } = context;
+  const isBusy = pageAction?.slug === data.slug;
+
+  return (
+    <div className="knowledge-page-actions">
+      <button type="button" onClick={() => onDownload(data)} disabled={isBusy}>
+        {isBusy && pageAction.type === "download" ? (
+          <>
+            <Spinner />
+            Downloading…
+          </>
+        ) : (
+          "Download"
+        )}
+      </button>
+
+      <button
+        className="delete-action"
+        type="button"
+        onClick={() => onDelete(data)}
+        disabled={isBusy}
+      >
+        {isBusy && pageAction.type === "delete" ? (
+          <>
+            <Spinner />
+            Deleting…
+          </>
+        ) : (
+          "Delete"
+        )}
+      </button>
+    </div>
+  );
+}
+
+function ThemeToggle({ theme, onToggle, className = "" }) {
+  const isDark = theme === "dark";
+
+  return (
+    <button
+      type="button"
+      className={`theme-toggle ${className}`.trim()}
+      onClick={onToggle}
+      aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+      title={isDark ? "Switch to light theme" : "Switch to dark theme"}
+    >
+      {isDark ? (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <circle cx="12" cy="12" r="4.5" />
+          <path
+            d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"
+            strokeLinecap="round"
+          />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <path
+            d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+function ConfirmDialog({
+  open,
+  title,
+  description,
+  confirmLabel = "OK",
+  cancelLabel = "Cancel",
+  danger = false,
+  onConfirm,
+  onCancel,
+}) {
+  useEffect(() => {
+    if (!open) return;
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        onCancel();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, onCancel]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div className="modal-overlay" role="presentation" onClick={onCancel}>
+      <div
+        className="modal-dialog"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h3 id="confirm-dialog-title">{title}</h3>
+
+        {description && <p>{description}</p>}
+
+        <div className="modal-actions">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={onCancel}
+          >
+            {cancelLabel}
+          </button>
+
+          <button
+            type="button"
+            className={`primary-button ${danger ? "modal-danger-button" : ""}`}
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -86,15 +268,30 @@ function EmptyState({ icon, title, description }) {
   );
 }
 
+function TypingIndicator() {
+  return (
+    <span className="typing-dots" aria-hidden="true">
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
+
 function ChatTab() {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState([]);
   const [selectedCitation, setSelectedCitation] = useState(null);
+  const [sourcePanelOpen, setSourcePanelOpen] = useState(false);
   const [sourcePage, setSourcePage] = useState(null);
   const [sourceLoading, setSourceLoading] = useState(false);
   const [sourceError, setSourceError] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [copiedMessageId, setCopiedMessageId] = useState(null);
+
+  const textareaRef = useRef(null);
+  const conversationRef = useRef(null);
 
   const citedSources = useMemo(() => {
     const seen = new Set();
@@ -153,10 +350,25 @@ function ChatTab() {
     };
   }, [selectedCitation]);
 
-  async function handleSubmit(event) {
-    event.preventDefault();
+  // Keep the newest message in view, mirroring the auto-scroll feel of AI chat tools.
+  useEffect(() => {
+    const node = conversationRef.current;
+    if (!node) return;
+    node.scrollTop = node.scrollHeight;
+  }, [messages, loading]);
 
-    const trimmedQuestion = question.trim();
+  // Grow the textarea with the content instead of scrolling inside a fixed box.
+  // useLayoutEffect measures synchronously before paint, avoiding a flash of
+  // a too-short box (CSS min-height is also a floor as a second safeguard).
+  useLayoutEffect(() => {
+    const node = textareaRef.current;
+    if (!node) return;
+    node.style.height = "auto";
+    node.style.height = `${Math.min(node.scrollHeight, 160)}px`;
+  }, [question]);
+
+  async function sendQuestion(rawQuestion) {
+    const trimmedQuestion = rawQuestion.trim();
 
     if (!trimmedQuestion || loading) {
       return;
@@ -202,20 +414,54 @@ function ChatTab() {
     }
   }
 
+  function handleSubmit(event) {
+    event.preventDefault();
+    sendQuestion(question);
+  }
+
+  function handleInputKeyDown(event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendQuestion(question);
+    }
+  }
+
+  function handleCopy(message) {
+    if (!navigator.clipboard) return;
+
+    navigator.clipboard.writeText(message.text).then(() => {
+      setCopiedMessageId(message.id);
+
+      window.setTimeout(() => {
+        setCopiedMessageId((current) => (current === message.id ? null : current));
+      }, 1500);
+    });
+  }
+
   function clearConversation() {
     setMessages([]);
     setSelectedCitation(null);
+    setSourcePanelOpen(false);
     setSourcePage(null);
     setSourceError("");
     setError("");
   }
 
+  function openSource(citation) {
+    setSelectedCitation(citation);
+    setSourcePanelOpen(true);
+  }
+
   return (
-    <main className="workspace-grid">
+    <main
+      className={`workspace-grid ${
+        sourcePanelOpen ? "" : "workspace-grid--source-collapsed"
+      }`}
+    >
       <section className="panel chat-panel">
         <div className="panel-heading">
           <div>
-            <span className="eyebrow">Knowledge assistant</span>
+            <span className="eyebrow">✦ AI knowledge assistant</span>
 
             <h1>Chat Workspace</h1>
 
@@ -236,70 +482,109 @@ function ChatTab() {
                 type="button"
                 onClick={clearConversation}
               >
-                Clear
+                New chat
               </button>
             )}
           </div>
         </div>
 
-        <div className="conversation" aria-live="polite">
+        <div className="conversation" aria-live="polite" ref={conversationRef}>
           {messages.length === 0 && !loading ? (
-            <EmptyState
-              icon="✦"
-              title="Ask about your knowledge base"
-              description="Try: What is the PTO rollover limit?"
-            />
+            <div className="chat-empty">
+              <EmptyState
+                icon="✦"
+                title="Ask about your knowledge base"
+                description="Try one of the prompts below, or type your own question."
+              />
+
+              <div className="suggested-prompts">
+                {SUGGESTED_PROMPTS.map((prompt) => (
+                  <button
+                    type="button"
+                    className="suggested-chip"
+                    key={prompt}
+                    onClick={() => sendQuestion(prompt)}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : (
             messages.map((message) => (
-              <article className={`message ${message.role}`} key={message.id}>
-                <div className="message-label">
-                  {message.role === "assistant" ? "KNOWLEDGEBRIDGE" : "YOU"}
+              <div className={`message-row ${message.role}`} key={message.id}>
+                <div className="message-avatar" aria-hidden="true">
+                  {message.role === "assistant" ? "✦" : "Y"}
                 </div>
 
-                <div className="message-text">{message.text}</div>
+                <article className={`message ${message.role}`}>
+                  <div className="message-label">
+                    <span>
+                      {message.role === "assistant" ? "KNOWLEDGEBRIDGE" : "YOU"}
+                    </span>
 
-                {message.citations?.length > 0 && (
-                  <div className="source-block">
-                    <span>Sources</span>
+                    {message.role === "assistant" && (
+                      <button
+                        type="button"
+                        className="copy-button"
+                        onClick={() => handleCopy(message)}
+                      >
+                        {copiedMessageId === message.id ? "Copied" : "Copy"}
+                      </button>
+                    )}
+                  </div>
 
-                    <div className="source-chips">
-                      {message.citations.map((citation) => (
-                        <button
-                          type="button"
-                          className={`source-chip ${
-                            selectedCitation?.pageSlug === citation.pageSlug
-                              ? "active"
-                              : ""
-                          }`}
-                          key={`${citation.pageSlug}-${citation.citationIndex}`}
-                          onClick={() => setSelectedCitation(citation)}
-                        >
-                          {citation.pageSlug}
-                        </button>
-                      ))}
+                  <div className="message-text">{message.text}</div>
+
+                  {message.citations?.length > 0 && (
+                    <div className="source-block">
+                      <span>Sources</span>
+
+                      <div className="source-chips">
+                        {message.citations.map((citation) => (
+                          <button
+                            type="button"
+                            className={`source-chip ${
+                              selectedCitation?.pageSlug === citation.pageSlug
+                                ? "active"
+                                : ""
+                            }`}
+                            key={`${citation.pageSlug}-${citation.citationIndex}`}
+                            onClick={() => openSource(citation)}
+                          >
+                            {citation.pageSlug}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {message.modelUsed && (
-                  <div className="message-meta">
-                    {message.modelUsed}
+                  {message.modelUsed && (
+                    <div className="message-meta">
+                      {message.modelUsed}
 
-                    {message.usage &&
-                      ` · ${
-                        message.usage.inputTokens + message.usage.outputTokens
-                      } tokens`}
-                  </div>
-                )}
-              </article>
+                      {message.usage &&
+                        ` · ${
+                          message.usage.inputTokens + message.usage.outputTokens
+                        } tokens`}
+                    </div>
+                  )}
+                </article>
+              </div>
             ))
           )}
 
           {loading && (
-            <article className="message assistant loading-message">
-              <Spinner />
-              Searching the knowledge base and preparing an answer…
-            </article>
+            <div className="message-row assistant">
+              <div className="message-avatar" aria-hidden="true">
+                ✦
+              </div>
+
+              <article className="message assistant loading-message">
+                <TypingIndicator />
+                Searching the knowledge base and preparing an answer…
+              </article>
+            </div>
           )}
         </div>
 
@@ -308,13 +593,15 @@ function ChatTab() {
         <form className="question-form" onSubmit={handleSubmit}>
           <label htmlFor="question">Ask a question</label>
 
-          <div className="question-row">
-            <input
+          <div className="question-row question-row--textarea">
+            <textarea
               id="question"
+              ref={textareaRef}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
+              onKeyDown={handleInputKeyDown}
               placeholder="Ask a question about the uploaded knowledge…"
-              autoComplete="off"
+              rows={1}
             />
 
             <button
@@ -325,19 +612,32 @@ function ChatTab() {
               {loading ? <Spinner /> : "Send"}
             </button>
           </div>
+
+          <small className="question-hint">
+            Enter to send &middot; Shift+Enter for a new line
+          </small>
         </form>
       </section>
 
-      <aside className="panel source-panel">
-        <div className="panel-heading compact">
-          <div>
-            <span className="eyebrow">Document viewer</span>
+      {sourcePanelOpen && (
+        <aside className="panel source-panel">
+          <div className="panel-heading compact">
+            <div>
+              <span className="eyebrow">Document viewer</span>
 
-            <h2>Source Preview</h2>
+              <h2>Source Preview</h2>
 
-            <p>Review the sources used to generate the answer.</p>
+              <p>Review the sources used to generate the answer.</p>
+            </div>
+
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setSourcePanelOpen(false)}
+            >
+              Close
+            </button>
           </div>
-        </div>
 
         {selectedCitation ? (
           <div className="source-preview">
@@ -400,7 +700,8 @@ function ChatTab() {
             }
           />
         )}
-      </aside>
+        </aside>
+      )}
     </main>
   );
 }
@@ -415,6 +716,8 @@ function AdminTab() {
   const [isDragging, setIsDragging] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
+  const [processingProgress, setProcessingProgress] = useState(null);
   const [notice, setNotice] = useState(null);
 
   const [pages, setPages] = useState([]);
@@ -422,8 +725,168 @@ function AdminTab() {
   const [pagesError, setPagesError] = useState("");
   const [pagesNotice, setPagesNotice] = useState(null);
   const [pageAction, setPageAction] = useState(null);
+  const [pendingDeletePage, setPendingDeletePage] = useState(null);
+  const [knowledgeSearch, setKnowledgeSearch] = useState("");
 
   const [workflowExpanded, setWorkflowExpanded] = useState(false);
+
+  const [leftPanelWidth, setLeftPanelWidth] = useState(getStoredAdminLeftWidth);
+  const [isResizingPanels, setIsResizingPanels] = useState(false);
+
+  const adminLayoutRef = useRef(null);
+  const leftPanelWidthRef = useRef(leftPanelWidth);
+  const resizeFrameRef = useRef(null);
+
+  useEffect(() => {
+    leftPanelWidthRef.current = leftPanelWidth;
+  }, [leftPanelWidth]);
+
+  const handleResizerPointerDown = useCallback((event) => {
+    event.preventDefault();
+
+    const container = adminLayoutRef.current;
+    if (!container) return;
+
+    setIsResizingPanels(true);
+    document.body.classList.add("is-resizing-panels");
+
+    function handlePointerMove(moveEvent) {
+      if (resizeFrameRef.current) return;
+
+      resizeFrameRef.current = requestAnimationFrame(() => {
+        resizeFrameRef.current = null;
+
+        const rect = container.getBoundingClientRect();
+        const maxWidth = Math.max(
+          rect.width - ADMIN_RIGHT_WIDTH_MIN - 24,
+          ADMIN_LEFT_WIDTH_MIN,
+        );
+
+        const nextWidth = Math.min(
+          Math.max(moveEvent.clientX - rect.left, ADMIN_LEFT_WIDTH_MIN),
+          maxWidth,
+        );
+
+        setLeftPanelWidth(nextWidth);
+      });
+    }
+
+    function handlePointerUp() {
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
+      document.body.classList.remove("is-resizing-panels");
+      setIsResizingPanels(false);
+
+      if (leftPanelWidthRef.current) {
+        localStorage.setItem(
+          ADMIN_LEFT_WIDTH_KEY,
+          String(leftPanelWidthRef.current),
+        );
+      }
+    }
+
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
+  }, []);
+
+  function handleResizerKeyDown(event) {
+    const step = 24;
+
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+
+      const container = adminLayoutRef.current;
+      const currentWidth =
+        leftPanelWidthRef.current ?? container?.clientWidth * 0.55 ?? 500;
+
+      const delta = event.key === "ArrowLeft" ? -step : step;
+      const nextWidth = Math.max(currentWidth + delta, ADMIN_LEFT_WIDTH_MIN);
+
+      setLeftPanelWidth(nextWidth);
+      localStorage.setItem(ADMIN_LEFT_WIDTH_KEY, String(nextWidth));
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      setLeftPanelWidth(null);
+      localStorage.removeItem(ADMIN_LEFT_WIDTH_KEY);
+    }
+  }
+
+  function resetPanelWidth() {
+    setLeftPanelWidth(null);
+    localStorage.removeItem(ADMIN_LEFT_WIDTH_KEY);
+  }
+
+  const processingIntervalRef = useRef(null);
+
+  // The server doesn't report real transcription progress, so this creeps
+  // toward 96% and never claims completion until the request actually resolves.
+  function startSimulatedProcessing() {
+    stopSimulatedProcessing();
+    setProcessingProgress(0);
+
+    processingIntervalRef.current = window.setInterval(() => {
+      setProcessingProgress((current) => {
+        const next = (current ?? 0) + (96 - (current ?? 0)) * 0.08;
+        return next;
+      });
+    }, 400);
+  }
+
+  function stopSimulatedProcessing() {
+    if (processingIntervalRef.current) {
+      window.clearInterval(processingIntervalRef.current);
+      processingIntervalRef.current = null;
+    }
+  }
+
+  const knowledgeGridRef = useRef(null);
+
+  const knowledgeColumnDefs = useMemo(
+    () => [
+      {
+        headerName: "Title",
+        colId: "title",
+        flex: 2,
+        minWidth: 160,
+        valueGetter: (params) => params.data.title || params.data.slug,
+      },
+      {
+        headerName: "Slug",
+        field: "slug",
+        flex: 1.4,
+        minWidth: 140,
+      },
+      {
+        headerName: "Type",
+        field: "type",
+        flex: 0.8,
+        minWidth: 100,
+        cellRenderer: KnowledgeTypeCell,
+      },
+      {
+        headerName: "Updated",
+        field: "updatedAt",
+        flex: 1.3,
+        minWidth: 160,
+        valueFormatter: (params) => formatUpdatedAt(params.value),
+      },
+      {
+        headerName: "Actions",
+        colId: "actions",
+        flex: 1.1,
+        minWidth: 150,
+        sortable: false,
+        filter: false,
+        cellRenderer: KnowledgeActionsCell,
+      },
+    ],
+    [],
+  );
+
+  const knowledgeDefaultColDef = useMemo(
+    () => ({ sortable: true, filter: true, resizable: true }),
+    [],
+  );
 
   const loadPages = useCallback(async () => {
     setPagesLoading(true);
@@ -445,7 +908,7 @@ function AdminTab() {
     loadPages();
   }, [loadPages]);
 
-  async function handleDownload(page) {
+  const handleDownload = useCallback(async (page) => {
     setPagesNotice(null);
 
     setPageAction({
@@ -485,18 +948,22 @@ function AdminTab() {
     } finally {
       setPageAction(null);
     }
-  }
+  }, []);
 
-  async function handleDelete(page) {
-    const confirmed = window.confirm(
-      `Delete “${page.title || page.slug}”?\n\n` +
-        "It will be removed from search but can be restored within 72 hours.",
-    );
+  const handleDelete = useCallback((page) => {
+    setPendingDeletePage(page);
+  }, []);
 
-    if (!confirmed) {
-      return;
-    }
+  const cancelDelete = useCallback(() => {
+    setPendingDeletePage(null);
+  }, []);
 
+  const confirmDelete = useCallback(async () => {
+    const page = pendingDeletePage;
+
+    if (!page) return;
+
+    setPendingDeletePage(null);
     setPagesNotice(null);
 
     setPageAction({
@@ -526,7 +993,19 @@ function AdminTab() {
     } finally {
       setPageAction(null);
     }
-  }
+  }, [pendingDeletePage, loadPages]);
+
+  const knowledgeGridContext = useMemo(
+    () => ({ pageAction, onDownload: handleDownload, onDelete: handleDelete }),
+    [pageAction, handleDownload, handleDelete],
+  );
+
+  useEffect(() => {
+    knowledgeGridRef.current?.api?.refreshCells({
+      columns: ["actions"],
+      force: true,
+    });
+  }, [pageAction]);
 
   function handleTitleChange(event) {
     const nextTitle = event.target.value;
@@ -618,12 +1097,15 @@ function AdminTab() {
   }
 
   function resetForm() {
+    stopSimulatedProcessing();
     setTitle("");
     setSlug("");
     setSlugEdited(false);
     setContent("");
     setFile(null);
     setIsDragging(false);
+    setUploadProgress(null);
+    setProcessingProgress(null);
 
     setFileInputKey((currentKey) => currentKey + 1);
   }
@@ -660,6 +1142,8 @@ function AdminTab() {
     }
 
     setLoading(true);
+    setUploadProgress(mode === "file" ? 0 : null);
+    setProcessingProgress(null);
 
     try {
       let result;
@@ -671,15 +1155,27 @@ function AdminTab() {
           content: content.trim(),
         });
       } else if (isMedia(file)) {
-        result = await ingestMedia({
-          title: title.trim(),
-          file,
-        });
+        result = await ingestMedia(
+          {
+            title: title.trim(),
+            file,
+          },
+          (percent) => {
+            setUploadProgress(percent);
+
+            if (percent >= 100) {
+              startSimulatedProcessing();
+            }
+          },
+        );
       } else {
-        result = await ingestFile({
-          title: title.trim(),
-          file,
-        });
+        result = await ingestFile(
+          {
+            title: title.trim(),
+            file,
+          },
+          setUploadProgress,
+        );
       }
 
       setNotice({
@@ -701,12 +1197,23 @@ function AdminTab() {
           "Ingestion failed. Confirm that the Spring Boot ingestion endpoint is available.",
       });
     } finally {
+      stopSimulatedProcessing();
       setLoading(false);
+      setUploadProgress(null);
+      setProcessingProgress(null);
     }
   }
 
   return (
-    <main className="admin-layout">
+    <main
+      className="admin-layout"
+      ref={adminLayoutRef}
+      style={
+        leftPanelWidth
+          ? { "--admin-left-width": `${leftPanelWidth}px` }
+          : undefined
+      }
+    >
       <section className="panel admin-panel">
         <div className="panel-heading">
           <div>
@@ -839,6 +1346,41 @@ function AdminTab() {
             <div className={`alert ${notice.type}`}>{notice.text}</div>
           )}
 
+          {loading && mode === "file" && uploadProgress !== null && (
+            <div
+              className="upload-progress"
+              role="progressbar"
+              aria-valuenow={Math.round(
+                uploadProgress < 100
+                  ? uploadProgress
+                  : (processingProgress ?? 0),
+              )}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <div className="upload-progress-track">
+                <div
+                  className="upload-progress-bar"
+                  style={{
+                    width: `${
+                      uploadProgress < 100
+                        ? uploadProgress
+                        : (processingProgress ?? 0)
+                    }%`,
+                  }}
+                />
+              </div>
+
+              <span className="upload-progress-label">
+                {uploadProgress < 100
+                  ? `Uploading… ${uploadProgress}%`
+                  : isMedia(file)
+                    ? `Transcribing… ~${Math.round(processingProgress ?? 0)}%`
+                    : "Finishing up…"}
+              </span>
+            </div>
+          )}
+
           <div className="form-actions">
             <button
               className="secondary-button"
@@ -854,9 +1396,11 @@ function AdminTab() {
                 <>
                   <Spinner />
 
-                  {mode === "file" && file && isMedia(file)
-                    ? "Transcribing and ingesting…"
-                    : "Ingesting…"}
+                  {mode === "file" && uploadProgress !== null && uploadProgress < 100
+                    ? `Uploading… ${uploadProgress}%`
+                    : mode === "file" && file && isMedia(file)
+                      ? `Transcribing… ~${Math.round(processingProgress ?? 0)}%`
+                      : "Ingesting…"}
                 </>
               ) : mode === "file" ? (
                 "Upload and ingest"
@@ -867,6 +1411,18 @@ function AdminTab() {
           </div>
         </form>
       </section>
+
+      <div
+        className={`panel-resizer ${isResizingPanels ? "is-dragging" : ""}`}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize ingestion and inventory panels"
+        tabIndex={0}
+        onPointerDown={handleResizerPointerDown}
+        onKeyDown={handleResizerKeyDown}
+        onDoubleClick={resetPanelWidth}
+        title="Drag to resize · Double-click to reset"
+      />
 
       <aside
         className={`panel guidance-panel ${
@@ -926,62 +1482,35 @@ function AdminTab() {
               No knowledge has been ingested yet.
             </div>
           ) : (
-            <ul className="knowledge-list">
-              {pages.map((page) => (
-                <li key={page.slug}>
-                  <div className="knowledge-page-icon" aria-hidden="true">
-                    ▤
-                  </div>
+            <div className="knowledge-grid-wrap">
+              <input
+                type="search"
+                className="knowledge-search"
+                value={knowledgeSearch}
+                onChange={(event) => setKnowledgeSearch(event.target.value)}
+                placeholder="Search title, slug, or type…"
+                aria-label="Search ingested knowledge"
+              />
 
-                  <div className="knowledge-page-details">
-                    <div className="knowledge-page-title">
-                      <strong>{page.title || page.slug}</strong>
-
-                      <span className="type-badge">{page.type || "page"}</span>
-                    </div>
-
-                    <code>{page.slug}</code>
-
-                    <small>Updated {formatUpdatedAt(page.updatedAt)}</small>
-
-                    <div className="knowledge-page-actions">
-                      <button
-                        type="button"
-                        onClick={() => handleDownload(page)}
-                        disabled={pageAction?.slug === page.slug}
-                      >
-                        {pageAction?.slug === page.slug &&
-                        pageAction.type === "download" ? (
-                          <>
-                            <Spinner />
-                            Downloading…
-                          </>
-                        ) : (
-                          "Download"
-                        )}
-                      </button>
-
-                      <button
-                        className="delete-action"
-                        type="button"
-                        onClick={() => handleDelete(page)}
-                        disabled={pageAction?.slug === page.slug}
-                      >
-                        {pageAction?.slug === page.slug &&
-                        pageAction.type === "delete" ? (
-                          <>
-                            <Spinner />
-                            Deleting…
-                          </>
-                        ) : (
-                          "Delete"
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+              <div className="knowledge-ag-grid">
+                <AgGridProvider modules={AG_GRID_MODULES}>
+                  <AgGridReact
+                    ref={knowledgeGridRef}
+                    theme={kbGridTheme}
+                    rowData={pages}
+                    columnDefs={knowledgeColumnDefs}
+                    defaultColDef={knowledgeDefaultColDef}
+                    context={knowledgeGridContext}
+                    quickFilterText={knowledgeSearch}
+                    getRowId={(params) => params.data.slug}
+                    rowHeight={44}
+                    headerHeight={38}
+                    animateRows
+                    suppressCellFocus
+                  />
+                </AgGridProvider>
+              </div>
+            </div>
           )}
         </div>
 
@@ -1076,14 +1605,60 @@ function AdminTab() {
           )}
         </div>
       </aside>
+
+      <ConfirmDialog
+        open={!!pendingDeletePage}
+        title={`Delete "${pendingDeletePage?.title || pendingDeletePage?.slug || ""}"?`}
+        description="It will be removed from search but can be restored within 72 hours."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
     </main>
   );
 }
 
 export default function App() {
+  const [authUser, setAuthUser] = useState(
+    () => sessionStorage.getItem(AUTH_STORAGE_KEY) || null,
+  );
+  const [theme, setTheme] = useState(getInitialTheme);
   const [activeTab, setActiveTab] = useState("chat");
-  const [activePage, setActivePage] = useState("qa");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
+
+  function toggleTheme() {
+    setTheme((current) => (current === "dark" ? "light" : "dark"));
+  }
+
+  function handleLogin(username) {
+    sessionStorage.setItem(AUTH_STORAGE_KEY, username);
+    setAuthUser(username);
+  }
+
+  function handleLogout() {
+    sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    setAuthUser(null);
+  }
+
+  if (!authUser) {
+    return (
+      <>
+        <ThemeToggle
+          theme={theme}
+          onToggle={toggleTheme}
+          className="theme-toggle--fixed"
+        />
+        <Login onLogin={handleLogin} />
+      </>
+    );
+  }
 
   return (
     <div className="kb-app-shell">
@@ -1105,14 +1680,24 @@ export default function App() {
             </div>
           </div>
 
-          <div className="current-page-title">
-            {activeTab === "chat" && "Q&A Workspace"}
-            {activeTab === "admin" && "Admin Ingestion"}
-            {activeTab === "cost" && "Cost Dashboard"}
-          </div>
+          <div className="header-actions">
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
 
-          <div className="status-pill">
-            <span /> POC
+            <div className="user-chip" title={`Signed in as ${authUser}`}>
+              <span className="user-avatar" aria-hidden="true">
+                {getInitials(authUser)}
+              </span>
+
+              <span className="user-name">{authUser}</span>
+            </div>
+
+            <button
+              className="text-button kb-logout-button"
+              type="button"
+              onClick={handleLogout}
+            >
+              Sign out
+            </button>
           </div>
         </header>
 
