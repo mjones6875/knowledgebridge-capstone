@@ -14,6 +14,8 @@ questions with source citations while clearly acknowledging when it lacks suffic
 
 This is a proof-of-concept application, not a production enterprise system.
 
+New to the project? Start with [ONBOARDING.md](ONBOARDING.md).
+
 ## Tech Stack
 
 - **Frontend:** React
