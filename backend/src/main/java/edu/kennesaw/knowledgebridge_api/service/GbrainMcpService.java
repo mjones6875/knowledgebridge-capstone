@@ -1,6 +1,7 @@
 package edu.kennesaw.knowledgebridge_api.service;
 
 import edu.kennesaw.knowledgebridge_api.dto.*;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -23,6 +24,7 @@ public class GbrainMcpService {
     private final CostTrackingService costTrackingService;
 
     public GbrainMcpService(
+            @Qualifier("gbrainMcpClient")
             McpSyncClient gbrainClient,
             ObjectMapper objectMapper,
             CostTrackingService costTrackingService

@@ -13,7 +13,7 @@ import java.time.Duration;
 @Configuration
 public class GbrainMcpConfig {
 
-    @Bean(destroyMethod = "close")
+    @Bean(name = "gbrainMcpClient", destroyMethod = "close")
     public McpSyncClient gbrainMcpClient(
             @Value("${gbrain.base-url:http://localhost:8787}")
             String baseUrl,

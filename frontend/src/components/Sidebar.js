@@ -28,10 +28,36 @@ function ChartIcon() {
   );
 }
 
+function JiraIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path
+        d="M12 3 4 9.5 12 16l8-6.5L12 3Z"
+        strokeLinejoin="round"
+      />
+      <path d="M12 16v5" strokeLinecap="round" />
+      <path d="M8 18.5 12 21l4-2.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PlugIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M9 3v4M15 3v4" strokeLinecap="round" />
+      <path
+        d="M7 7h10v4a5 5 0 0 1-10 0V7Z"
+        strokeLinejoin="round"
+      />
+      <path d="M12 16v5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 const menuItems = [
   {
     id: "chat",
-    label: "Ask AI",
+    label: "Q&A Workspace",
     Icon: ChatIcon
   },
   {
@@ -40,9 +66,19 @@ const menuItems = [
     Icon: UploadIcon
   },
   {
+    id: "jira",
+    label: "Jira Issues",
+    Icon: JiraIcon
+  },
+  {
     id: "cost",
-    label: "Usage & Cost",
+    label: "Cost Dashboard",
     Icon: ChartIcon
+  },
+  {
+    id: "integrations",
+    label: "Integrations",
+    Icon: PlugIcon
   }
 ];
 
