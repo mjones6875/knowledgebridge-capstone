@@ -1,5 +1,6 @@
 package edu.kennesaw.knowledgebridge_api.service;
 
+import edu.kennesaw.knowledgebridge_api.dto.TranscriptionHealthResponse;
 import edu.kennesaw.knowledgebridge_api.dto.TranscriptionResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
@@ -33,6 +34,13 @@ public class TranscriptionClient {
                 .baseUrl(transcriptionBaseUrl)
                 .requestFactory(requestFactory)
                 .build();
+    }
+
+    public TranscriptionHealthResponse getHealth() {
+        return restClient.get()
+                .uri("/health")
+                .retrieve()
+                .body(TranscriptionHealthResponse.class);
     }
 
     public TranscriptionResponse transcribe(MultipartFile file) {
