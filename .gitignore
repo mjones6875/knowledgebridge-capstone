@@ -43,3 +43,6 @@ venv/
 
 # Personal reference, not for the shared team repo
 DOCKER_SETUP.md
+
+# Database backups
+backups/
