@@ -1,27 +1,12 @@
-# KnowledgeBridge: Team Onboarding & Current Status
+# KnowledgeBridge: Team Onboarding
 
-## What's Already Set Up
+## What's Set Up
 
-- Public GitHub repo created: `mjones6875/knowledgebridge-capstone`
-- `README.md`, MIT `LICENSE`, `.gitignore` (Node/React, Java/Spring Boot, Python, and secrets all covered)
-- Directory structure scaffolded (see below)
-- 10 Milestone 1 issues filed under the repo's **Issues** tab
-- Local Postgres + pgvector development database, containerized via Docker Compose
-
-## Where Things Go
-
-| Folder | What belongs here | Who |
-|---|---|---|
-| `frontend/` | The React application | Mukhesh, Monika |
-| `backend/` | The Java Spring Boot API | Praveen, Marlon |
-| `docs/architecture/` | System architecture diagrams, workflow diagrams | Team |
-| `docs/deliverables/` | SRS, cost projection spreadsheet, Project Plan / Gantt chart | Monica, Team |
-| `docs/meeting-notes/` | Notes from team meetings | Team |
-| `data/synthetic-corpus/` | Synthetic business dataset | Team |
-| `scripts/` | Setup/utility scripts (not application code) | Team |
-
-Every folder currently has a placeholder `.gitkeep` file so Git tracks the empty
-directory. Delete the `.gitkeep` once real content lands in that folder.
+- GitHub repo: `mjones6875/knowledgebridge-capstone`
+- Issues tab tracks all milestone work. Check it for what's open and claim what you pick up.
+- Docker Compose runs the backend, gBrain, and both Postgres databases with one command
+- CI runs on every pull request and every push to `main`
+- `.gitignore` covers Node, Java, Python, and secrets
 
 ## Getting Started
 
@@ -30,26 +15,35 @@ git clone https://github.com/mjones6875/knowledgebridge-capstone.git
 cd knowledgebridge-capstone
 ```
 
-## Milestone 1 - Tracked as GitHub Issues
+Then follow **Running with Docker** in the [README](README.md). It covers the `.env` file,
+creating the gBrain access token, and starting the frontend.
 
-See the repo's **Issues** tab for the full list and to claim/assign one
+If you'd rather run gBrain natively on your own machine (the PGLite setup), follow
+Praveen's local setup guide and point the backend at it with
+`GBRAIN_BASE_URL=http://host.docker.internal:8787`.
 
-1. Set up local development environment
-2. Generate synthetic business dataset
-3. Draft Requirements Document / SRS
-4. Create system architecture diagram
-5. Create business knowledge workflow diagram
-6. Create user-flow diagrams
-7. Draft initial cost projection spreadsheet
-8. Define AI interaction and synthesis strategy
-9. Document chunking approach
-10. Draft Project Plan and Gantt chart
+## How We Work
 
-## Local Dev Environment (Docker)
+1. Create a branch for your change. Don't commit straight to `main`.
+2. Open a pull request when it's ready.
+3. CI checks it automatically: backend build and tests, frontend build, and the Docker images.
+   Fix anything it flags before merging.
+4. Never commit `.env`, API keys, or access tokens.
 
-Postgres + pgvector runs locally via Docker Compose:
+## Where Things Go
 
-1. Copy `.env.example` to `.env` and fill in local values (any placeholder
-   works since this database only exists on your own machine)
-2. `docker compose up -d`
-3. `docker compose ps` to confirm it's running
+| Folder | What belongs here | Who |
+|---|---|---|
+| `frontend/` | The React application | Mukhesh, Monika |
+| `backend/` | The Java Spring Boot API | Praveen |
+| `transcription-service/` | Audio/video transcription service | Praveen |
+| `gbrain/` | gBrain Docker build | Marlon |
+| `.github/workflows/` | CI | Marlon |
+| `docs/architecture/` | System architecture diagrams, workflow diagrams | Team |
+| `docs/deliverables/` | SRS, cost projection spreadsheet, Project Plan / Gantt chart | Monika, Team |
+| `docs/meeting-notes/` | Notes from team meetings | Team |
+| `data/synthetic-corpus/` | Synthetic business dataset | Team |
+| `scripts/` | Setup/utility scripts (not application code) | Team |
+
+Some folders still have a placeholder `.gitkeep` file so Git tracks the empty directory.
+Delete it once real content lands in that folder.
