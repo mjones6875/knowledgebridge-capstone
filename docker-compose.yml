@@ -11,6 +11,11 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # gbrain's own database. The name is fixed, the gbrain entrypoint waits for
   # a host called exactly "gbrain-postgres".
@@ -24,6 +29,11 @@ services:
       POSTGRES_DB: gbrain
     volumes:
       - gbrain_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gbrain -d gbrain"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # Built from the sponsor's docker-gbrain wrapper (vendored in ./gbrain).
   gbrain:
@@ -34,7 +44,8 @@ services:
     container_name: knowledgebridge-gbrain
     restart: unless-stopped
     depends_on:
-      - gbrain-postgres
+      gbrain-postgres:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgres://gbrain:${GBRAIN_POSTGRES_PASSWORD:-gbrain_local_dev_only}@gbrain-postgres:5432/gbrain
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
@@ -43,14 +54,26 @@ services:
       - "7333:7333"
     volumes:
       - gbrain_data:/data/brain
+    # First startup initializes the database, so allow a few minutes before
+    # failed checks count. The image has bun but not curl.
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:7333/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 180s
 
   backend:
     build: ./backend
     container_name: knowledgebridge-backend
     restart: unless-stopped
+    # Waits until gBrain answers its health check, so the backend doesn't
+    # start (and crash) before gBrain is ready.
     depends_on:
-      - postgres
-      - gbrain
+      postgres:
+        condition: service_healthy
+      gbrain:
+        condition: service_healthy
     environment:
       # Defaults to the gbrain container. To use a gbrain running on your own
       # machine instead, set GBRAIN_BASE_URL=http://host.docker.internal:8787
