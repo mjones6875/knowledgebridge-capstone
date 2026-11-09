@@ -1,45 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AgGridProvider, AgGridReact } from "ag-grid-react";
 import { AG_GRID_MODULES, kbGridTheme } from "../gridTheme";
-import { getJiraIssue, searchJiraIssues } from "../api/knowledgeBridgeApi";
+import { getJiraIssue, naturalSearchJiraIssues } from "../api/knowledgeBridgeApi";
 
 const ISSUE_TYPE_OPTIONS = ["Epic", "Story", "Task", "Bug", "Subtask"];
 const STATUS_OPTIONS = ["All", "To Do", "In Progress", "Done"];
+const DEFAULT_QUERY = "Show all issues";
+const JIRA_BASE_URL = (
+  process.env.REACT_APP_JIRA_BASE_URL || "https://mech2soft.atlassian.net"
+).replace(/\/+$/, "");
 
-function escapeJql(value) {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
-
-// Builds JQL from structured filters so regular users never have to write
-// JQL themselves. Natural-language search can replace/augment this later.
-function buildJql({ searchText, issueTypes, status, assignee }) {
-  const clauses = ["project = KB"];
-
-  if (issueTypes && issueTypes.length > 0) {
-    const quoted = issueTypes
-      .map((type) => `"${escapeJql(type)}"`)
-      .join(", ");
-    clauses.push(`issuetype in (${quoted})`);
-  }
-
-  if (status && status !== "All") {
-    clauses.push(`status = "${escapeJql(status)}"`);
-  }
-
-  if (assignee && assignee !== "All") {
-    clauses.push(
-      assignee === "Unassigned"
-        ? "assignee is EMPTY"
-        : `assignee = "${escapeJql(assignee)}"`,
-    );
-  }
-
-  const trimmedSearch = searchText.trim();
-  if (trimmedSearch) {
-    clauses.push(`summary ~ "${escapeJql(trimmedSearch)}"`);
-  }
-
-  return `${clauses.join(" AND ")} ORDER BY created DESC`;
+function getJiraIssueUrl(issueKey) {
+  return `${JIRA_BASE_URL}/browse/${encodeURIComponent(issueKey)}`;
 }
 
 function formatDate(value) {
@@ -128,8 +100,8 @@ function JiraIssues({ active }) {
     setError("");
 
     try {
-      const jql = buildJql({ searchText, issueTypes: selectedTypes, status, assignee });
-      const response = await searchJiraIssues(jql);
+      const query = searchText.trim() || DEFAULT_QUERY;
+      const response = await naturalSearchJiraIssues(query);
       setIssues(response?.issues || []);
     } catch (requestError) {
       setError(
@@ -139,7 +111,7 @@ function JiraIssues({ active }) {
       setLoading(false);
       setHasLoadedOnce(true);
     }
-  }, [searchText, selectedTypes, status, assignee]);
+  }, [searchText]);
 
   useEffect(() => {
     if (active && !hasLoadedOnce) {
@@ -164,6 +136,30 @@ function JiraIssues({ active }) {
     return ["All", ...Array.from(unique).sort(), "Unassigned"];
   }, [issues]);
 
+  // Natural search handles the free-text query; the dropdowns refine the
+  // returned results on the client.
+  const filteredIssues = useMemo(() => {
+    return issues.filter((issue) => {
+      if (selectedTypes.length > 0 && !selectedTypes.includes(issue.type)) {
+        return false;
+      }
+
+      if (status !== "All" && issue.status !== status) {
+        return false;
+      }
+
+      if (assignee !== "All") {
+        if (assignee === "Unassigned") {
+          if (issue.assignee) return false;
+        } else if (issue.assignee !== assignee) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [issues, selectedTypes, status, assignee]);
+
   const loadIssueDetail = useCallback(async (issueKey) => {
     setSelectedKey(issueKey);
     setSelectedIssue(null);
@@ -184,7 +180,22 @@ function JiraIssues({ active }) {
 
   const columnDefs = useMemo(
     () => [
-      { headerName: "Key", field: "key", flex: 0.9, minWidth: 100 },
+      {
+        headerName: "Key",
+        field: "key",
+        flex: 0.9,
+        minWidth: 100,
+        cellRenderer: (params) => (
+          <a
+            href={getJiraIssueUrl(params.value)}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {params.value}
+          </a>
+        ),
+      },
       { headerName: "Type", field: "type", flex: 0.9, minWidth: 100 },
       { headerName: "Summary", field: "summary", flex: 2.4, minWidth: 220 },
       {
@@ -238,7 +249,7 @@ function JiraIssues({ active }) {
             type="text"
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
-            placeholder="transcript ingestion"
+            placeholder="Show all bugs assigned to me"
           />
         </label>
 
@@ -286,7 +297,7 @@ function JiraIssues({ active }) {
 
       <div className="kb-jira__body">
         <section className="kb-dashboard-panel kb-jira__table-panel">
-          {!loading && hasLoadedOnce && issues.length === 0 ? (
+          {!loading && hasLoadedOnce && filteredIssues.length === 0 ? (
             <div className="kb-dashboard-empty">
               No issues matched the current search and filters.
             </div>
@@ -295,7 +306,7 @@ function JiraIssues({ active }) {
               <AgGridProvider modules={AG_GRID_MODULES}>
                 <AgGridReact
                   theme={kbGridTheme}
-                  rowData={issues}
+                  rowData={filteredIssues}
                   columnDefs={columnDefs}
                   defaultColDef={defaultColDef}
                   getRowId={(params) => params.data.key}
@@ -344,7 +355,15 @@ function JiraIssues({ active }) {
           {selectedKey && !detailLoading && !detailError && selectedIssue && (
             <div className="kb-jira-detail">
               <div className="kb-jira-detail__title">
-                <strong>{selectedIssue.key}</strong>
+                <strong>
+                  <a
+                    href={getJiraIssueUrl(selectedIssue.key)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {selectedIssue.key}
+                  </a>
+                </strong>
                 <StatusBadge status={selectedIssue.status} />
               </div>
 

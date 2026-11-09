@@ -216,6 +216,17 @@ export async function searchJiraIssues(jql) {
   return parseResponse(response);
 }
 
+export async function naturalSearchJiraIssues(query) {
+  const response = await fetch(`${API_BASE_URL}/api/jira/natural-search`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ query })
+  });
+  return parseResponse(response);
+}
+
 export async function getJiraIssue(issueKey) {
   const response = await fetch(
     `${API_BASE_URL}/api/jira/issues/${encodeURIComponent(issueKey)}`
