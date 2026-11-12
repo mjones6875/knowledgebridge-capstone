@@ -42,13 +42,39 @@ jobs:
       - name: Build
         run: npm run build
 
+  # Builds the Docker stack, starts it on GitHub's runner, and runs the smoke test.
   docker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Use example settings
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          # No AI key in CI, so gBrain runs without embeddings and search uses keywords.
+          sed -i 's/^OPENROUTER_API_KEY=.*/OPENROUTER_API_KEY=/' .env
       - name: Check compose file
         run: docker compose config --quiet
       - name: Build images
         run: docker compose build
+      - name: Start gBrain
+        run: |
+          docker compose up -d gbrain-postgres gbrain
+          timeout 300 bash -c 'until curl -sf http://localhost:7333/health >/dev/null; do sleep 5; done'
+      - name: Create a gBrain token for the backend
+        run: |
+          token=$(docker compose exec -T gbrain gbrain auth create ci --scopes read,write | grep -o 'gbrain_[A-Za-z0-9_-]*' | head -1)
+          [ -n "$token" ]
+          echo "::add-mask::$token"
+          sed -i "s|^GBRAIN_TOKEN=.*|GBRAIN_TOKEN=$token|" .env
+      - name: Start everything
+        run: |
+          docker compose up -d
+          timeout 180 bash -c 'until curl -sf http://localhost:8080/actuator/health >/dev/null; do sleep 5; done'
+      - name: Smoke test
+        run: bash scripts/smoke-test.sh
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --tail=80
+      - name: Shut down
+        if: always()
+        run: docker compose down -v
