@@ -51,7 +51,7 @@ Plan on about 2GB of free memory; on a small server, add swap.
    ```bash
    docker compose exec gbrain gbrain auth create knowledgebridge-api --scopes read,write
    ```
-4. Start everything else:
+4. Start everything else. Docker holds the backend until gBrain passes its health check:
    ```bash
    docker compose up -d --build
    docker compose ps

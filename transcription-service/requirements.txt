@@ -1,0 +1,8 @@
+fastapi==0.115.6
+uvicorn==0.34.0
+python-multipart==0.0.20
+faster-whisper==1.1.1
+numpy
+requests
+av<15
+--only-binary=av

@@ -72,6 +72,16 @@ jobs:
           timeout 180 bash -c 'until curl -sf http://localhost:8080/actuator/health >/dev/null; do sleep 5; done'
       - name: Smoke test
         run: bash scripts/smoke-test.sh
+      - name: Media test (spoken clip through the backend and transcription)
+        run: |
+          sudo apt-get install -y -qq espeak-ng >/dev/null
+          espeak-ng -w /tmp/speech.wav "The quarterly budget review happens every Friday afternoon."
+          timeout 300 bash -c 'until curl -sf http://localhost:8090/health >/dev/null; do sleep 5; done'
+          curl -sf -X POST http://localhost:8080/api/gbrain/ingest/media \
+            -F "file=@/tmp/speech.wav" -F "slug=media-test" -F "title=Media Test" > /tmp/media.json
+          cat /tmp/media.json
+          curl -sf http://localhost:8080/api/gbrain/pages | grep -q media-test
+          curl -sf "http://localhost:8080/api/gbrain/search?query=budget" | grep -q media-test
       # Saves a page, backs up, adds another page, then restores. The first page
       # should come back and the second should be gone.
       - name: Backup and restore round trip
