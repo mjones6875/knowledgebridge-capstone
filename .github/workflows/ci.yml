@@ -72,6 +72,21 @@ jobs:
           timeout 180 bash -c 'until curl -sf http://localhost:8080/actuator/health >/dev/null; do sleep 5; done'
       - name: Smoke test
         run: bash scripts/smoke-test.sh
+      # Saves a page, backs up, adds another page, then restores. The first page
+      # should come back and the second should be gone.
+      - name: Backup and restore round trip
+        run: |
+          api=http://localhost:8080/api/gbrain
+          curl -sf -X POST $api/ingest/text -H "Content-Type: application/json" \
+            -d '{"title":"Before Backup","slug":"before-backup","content":"Saved before the backup."}' >/dev/null
+          bash scripts/backup.sh
+          curl -sf -X POST $api/ingest/text -H "Content-Type: application/json" \
+            -d '{"title":"After Backup","slug":"after-backup","content":"Added after the backup."}' >/dev/null
+          echo yes | bash scripts/restore.sh "$(ls -d backups/* | tail -1)"
+          timeout 300 bash -c 'until curl -sf http://localhost:8080/actuator/health >/dev/null; do sleep 5; done'
+          pages=$(curl -sf $api/pages)
+          echo "$pages" | grep -q before-backup
+          if echo "$pages" | grep -q after-backup; then echo "after-backup survived the restore"; exit 1; fi
       - name: Show logs on failure
         if: failure()
         run: docker compose logs --tail=80
