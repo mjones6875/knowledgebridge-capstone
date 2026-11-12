@@ -5,3 +5,4 @@ faster-whisper==1.1.1
 numpy
 requests
 av<15
+--only-binary=av
