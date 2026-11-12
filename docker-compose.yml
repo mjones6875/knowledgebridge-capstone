@@ -79,6 +79,8 @@ services:
       # machine instead, set GBRAIN_BASE_URL=http://host.docker.internal:8787
       GBRAIN_BASE_URL: ${GBRAIN_BASE_URL:-http://gbrain:7333}
       GBRAIN_TOKEN: ${GBRAIN_TOKEN}
+      # Overrides transcription.base-url in application.properties.
+      TRANSCRIPTION_BASE_URL: ${TRANSCRIPTION_BASE_URL:-http://transcription:8090}
     ports:
       - "8080:8080"
     extra_hosts:
@@ -86,6 +88,15 @@ services:
       # (Mac/Windows). On native Linux (like an EC2 instance), this line is
       # what makes that same hostname actually resolve to the host machine.
       - "host.docker.internal:host-gateway"
+
+  # Speech-to-text for audio/video ingestion. The backend only calls it when
+  # media is uploaded, so it isn't a startup dependency.
+  transcription:
+    build: ./transcription-service
+    container_name: knowledgebridge-transcription
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
 
   # frontend intentionally not containerized for local dev, see DOCKER_SETUP.md
   # (local-only file) for why: the browser talks to the backend directly, so
