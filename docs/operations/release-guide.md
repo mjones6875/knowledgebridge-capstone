@@ -20,11 +20,10 @@ Planned releases:
 
 ## Before a release
 
-- [ ] CI passes on `main`
-- [ ] The full stack has been tested on the EC2 server from the commit being released:
-      startup, ingestion, search, a cited answer, a "not enough information" answer,
-      the cost dashboard, and transcription
-- [ ] A backup was taken on the server first (`bash scripts/backup.sh`)
+- [ ] CI passes on `main`. Its stack test already covers startup, ingestion, and search
+      automatically.
+- [ ] Checked by hand with a real OpenRouter key, since CI runs without one: a cited answer,
+      a "not enough information" answer, and the cost dashboard
 - [ ] The README's model and version table matches what's running
 - [ ] Issues for the release are closed, or moved to the next one
 - [ ] No API keys, tokens, or `.env` files in the changes
@@ -44,18 +43,20 @@ gh release create v0.1.0 --title "v0.1.0" --generate-notes
 `--generate-notes` builds the release notes from the pull requests merged since the last
 release. Edit them on GitHub afterward if anything needs explaining.
 
-## Updating the server to a release
+## Running a release
 
-On the EC2 server:
+Everything runs locally, so a release runs on any machine with Docker. From your copy of
+the repo, back up your data first, then switch to the release:
 
 ```bash
-cd ~/knowledgebridge-capstone
 bash scripts/backup.sh
 git fetch --tags
 git checkout v0.1.0
 docker compose up -d --build
 docker compose ps
 ```
+
+Go back to day-to-day work afterward with `git switch main`.
 
 ## Rolling back
 
