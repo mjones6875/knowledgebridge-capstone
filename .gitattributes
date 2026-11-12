@@ -1,2 +1,3 @@
 gbrain/entrypoint.sh text eol=lf
 gbrain/Dockerfile text eol=lf
+scripts/*.sh text eol=lf
