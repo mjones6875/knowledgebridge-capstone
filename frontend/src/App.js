@@ -10,6 +10,8 @@ import { createPortal } from "react-dom";
 import { AgGridProvider, AgGridReact } from "ag-grid-react";
 import Sidebar from "./components/Sidebar";
 import CostDashboard from "./components/CostDashboard";
+import JiraIssues from "./components/JiraIssues";
+import Integrations from "./components/Integrations";
 import Login from "./components/Login";
 import { AG_GRID_MODULES, kbGridTheme } from "./gridTheme";
 import {
@@ -1716,8 +1718,16 @@ export default function App() {
             <AdminTab />
           </div>
 
+          <div hidden={activeTab !== "jira"}>
+            <JiraIssues active={activeTab === "jira"} />
+          </div>
+
           <div hidden={activeTab !== "cost"}>
             <CostDashboard active={activeTab === "cost"} />
+          </div>
+
+          <div hidden={activeTab !== "integrations"}>
+            <Integrations active={activeTab === "integrations"} />
           </div>
         </main>
       </div>

@@ -208,6 +208,41 @@ export async function getPage(slug) {
   }
 }
 
+export async function searchJiraIssues(jql) {
+  const params = new URLSearchParams({ jql });
+  const response = await fetch(
+    `${API_BASE_URL}/api/jira/issues?${params.toString()}`
+  );
+  return parseResponse(response);
+}
+
+export async function getJiraIssue(issueKey) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/jira/issues/${encodeURIComponent(issueKey)}`
+  );
+  return parseResponse(response);
+}
+
+export async function listIntegrations() {
+  const response = await fetch(`${API_BASE_URL}/api/integrations`);
+  return parseResponse(response);
+}
+
+export async function testIntegrationConnection(id) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/integrations/${encodeURIComponent(id)}/test`,
+    { method: "POST" }
+  );
+  return parseResponse(response);
+}
+
+export async function getIntegrationCapabilities(id) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/integrations/${encodeURIComponent(id)}/capabilities`
+  );
+  return parseResponse(response);
+}
+
 export async function deletePage(slug) {
   const response = await fetch(
     `${API_BASE_URL}/api/gbrain/pages/${encodeURIComponent(slug)}`,
