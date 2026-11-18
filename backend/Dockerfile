@@ -1,5 +1,5 @@
 # Build stage: compiles the jar, needs Maven + JDK, not needed at runtime
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-26 AS build
 WORKDIR /app
 
 # Copy only the pom first so Docker can cache the dependency download layer
