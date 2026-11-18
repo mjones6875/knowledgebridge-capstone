@@ -39,8 +39,12 @@ means re-embedding all content.
 
 ## Running with Docker
 
-Starts the backend, gBrain, and both Postgres databases. The frontend runs separately.
-Plan on about 2GB of free memory; on a small server, add swap.
+Starts the backend, gBrain, transcription, and both Postgres databases. The frontend runs
+separately. Plan on about 2GB of free memory; on a small server, add swap.
+
+**Skip the build:** prebuilt images are published from `main`. Run `docker compose pull`
+first and drop `--build` from the commands below. To run a specific release, set
+`KB_VERSION=v0.1.0` (or another tag) in `.env`.
 
 1. Copy `.env.example` to `.env` and add your own OpenRouter key.
 2. Start gBrain and its database, then give it about a minute to initialize:
@@ -78,11 +82,15 @@ Never commit `.env`, API keys, or access tokens.
 
 ## CI
 
-GitHub Actions runs on every pull request and every push to `main`:
+GitHub Actions runs on every push to any branch and on every pull request:
 
 - **Backend:** builds and runs the tests
 - **Frontend:** production build, lint warnings fail the build
-- **Docker:** checks the compose file and builds every image
+- **Docker:** builds every image, starts the full stack, and runs the smoke test, a real
+  audio clip through transcription, and a backup and restore round trip
+
+Pushes to `main` and release tags also publish the images to GitHub's container registry.
+Dependabot opens weekly grouped pull requests for dependency updates.
 
 ## Team
 
