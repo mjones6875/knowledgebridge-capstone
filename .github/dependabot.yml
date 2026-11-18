@@ -1,0 +1,48 @@
+# Weekly dependency updates, grouped so each area opens at most one or two PRs.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      frontend:
+        patterns: ['*']
+
+  - package-ecosystem: maven
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      backend:
+        patterns: ['*']
+
+  - package-ecosystem: pip
+    directory: /transcription-service
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      transcription:
+        patterns: ['*']
+    ignore:
+      # faster-whisper breaks with PyAV 15 and newer.
+      - dependency-name: av
+        versions: ['>=15']
+
+  - package-ecosystem: docker
+    directories: [/backend, /transcription-service]
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      actions:
+        patterns: ['*']

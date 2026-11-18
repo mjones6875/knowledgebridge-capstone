@@ -37,6 +37,7 @@ services:
 
   # Built from the sponsor's docker-gbrain wrapper (vendored in ./gbrain).
   gbrain:
+    image: ghcr.io/mjones6875/knowledgebridge-gbrain:${KB_VERSION:-latest}
     build:
       context: ./gbrain
       args:
@@ -64,6 +65,7 @@ services:
       start_period: 180s
 
   backend:
+    image: ghcr.io/mjones6875/knowledgebridge-backend:${KB_VERSION:-latest}
     build: ./backend
     container_name: knowledgebridge-backend
     restart: unless-stopped
@@ -92,6 +94,7 @@ services:
   # Speech-to-text for audio/video ingestion. The backend only calls it when
   # media is uploaded, so it isn't a startup dependency.
   transcription:
+    image: ghcr.io/mjones6875/knowledgebridge-transcription:${KB_VERSION:-latest}
     build: ./transcription-service
     container_name: knowledgebridge-transcription
     restart: unless-stopped
